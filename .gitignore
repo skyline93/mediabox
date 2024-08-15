@@ -23,3 +23,12 @@ go.work.sum
 
 # env file
 .env
+/mediabox
+/mediabox-agent
+storage
+/config.json
+*.crt
+*.key
+*.db
+logs
+.vscode
