@@ -3,6 +3,7 @@
         <div class="header">
             <h1>Album Photos</h1>
             <button class="upload-button" @click="openModal">上传图片</button>
+            <button class="delete-selected-button" @click="deleteSelectedPhotos">删除选中的照片</button>
         </div>
 
         <div v-if="isModalOpen" class="modal">
@@ -27,23 +28,25 @@
                 <LightGallery :speed="500" licenseKey="0000-0000-000-0000">
                     <a v-for="(image, index) in images" :key="index" :href="imageUrls[index]" class="gallery-item">
                         <img :src="imageUrls[index]" :alt="image.file_name" />
+                        <input type="checkbox" v-model="selectedImages" :value="image.id" class="select-checkbox" @click.stop />
                     </a>
                 </LightGallery>
             </div>
         </div>
-    </div>
-    <div class="pagination">
-        <button @click="previousPage" :disabled="page === 1">上一页</button>
-        <span>当前页: {{ page }} / {{ totalPage }}</span>
-        <button @click="nextPage" :disabled="page === totalPage">下一页</button>
 
-        <label for="limit-select">每页显示数量：</label>
-        <select id="limit-select" v-model="limit" @change="fetchImages" class="styled-select">
-            <option value="5">5</option>
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-        </select>
+        <div class="pagination">
+            <button @click="previousPage" :disabled="page === 1">上一页</button>
+            <span>当前页: {{ page }} / {{ totalPage }}</span>
+            <button @click="nextPage" :disabled="page === totalPage">下一页</button>
+
+            <label for="limit-select">每页显示数量：</label>
+            <select id="limit-select" v-model="limit" @change="fetchImages" class="styled-select">
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+            </select>
+        </div>
     </div>
 </template>
 
@@ -62,6 +65,7 @@ const loading = ref(true);
 const lightGalleryRef = ref(null);
 const isModalOpen = ref(false);
 const selectedFiles = ref([]);
+const selectedImages = ref([]);
 const route = useRoute();
 const albumId = route.params.id;
 
@@ -164,6 +168,21 @@ const confirmUpload = async () => {
     }
 };
 
+const deleteSelectedPhotos = async () => {
+    if (selectedImages.value.length === 0) {
+        alert('请选择要删除的照片');
+        return;
+    }
+
+    try {
+        await axiosInstance.delete('/api/v1/photo', { data: selectedImages.value });
+        fetchImages();
+        selectedImages.value = [];
+    } catch (error) {
+        console.error('Error deleting photos:', error);
+    }
+};
+
 const previousPage = () => {
     if (page.value > 1) {
         page.value--;
@@ -217,6 +236,21 @@ onMounted(async () => {
 
 .upload-button:hover {
     background-color: #369b72;
+}
+
+.delete-selected-button {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-left: 10px;
+}
+
+.delete-selected-button:hover {
+    background-color: #c0392b;
 }
 
 .modal {
@@ -289,24 +323,43 @@ onMounted(async () => {
 }
 
 .gallery-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     padding: 10px;
     box-sizing: border-box;
 }
 
 .gallery {
     display: grid;
-    grid-template-columns: auto-fill;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 5px;
+    flex-direction: column;
+    align-items: center;
 }
 
 .gallery-item {
-    width: 100%;
+    position: relative;
+    width: auto;
+    height: auto;
+    max-width: 50px; 
+    margin-bottom: 10px;
 }
 
 .gallery-item img {
-    width: 5%;
-    height: 80%;
+    width: 100%;
+    height: auto;
     object-fit: cover;
+}
+
+.select-checkbox {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    cursor: pointer;
+    z-index: 10;
 }
 
 .loading {
