@@ -1,6 +1,8 @@
 package log
 
 import (
+	"io"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -19,10 +21,6 @@ var (
 	logMutex sync.Mutex
 )
 
-func init() {
-	loggers = make([]*logrus.Logger, 0)
-}
-
 func NewLogger(logPath string) *logrus.Logger {
 	logMutex.Lock()
 	defer logMutex.Unlock()
@@ -30,14 +28,14 @@ func NewLogger(logPath string) *logrus.Logger {
 	logPath = filepath.Join("logs", logPath)
 
 	for _, log := range loggers {
-		if log.Out.(*lumberjack.Logger).Filename == logPath {
+		if log.Out == logFileOutput(logPath) {
 			return log
 		}
 	}
 
 	log := logrus.New()
 
-	output := &lumberjack.Logger{
+	fileOutput := &lumberjack.Logger{
 		Filename:   logPath,
 		MaxSize:    maxSize,
 		MaxBackups: maxBackups,
@@ -46,9 +44,17 @@ func NewLogger(logPath string) *logrus.Logger {
 		LocalTime:  true,
 	}
 
-	log.SetOutput(output)
+	multiWriter := io.MultiWriter(fileOutput, os.Stdout)
+
+	log.SetOutput(multiWriter)
 	log.SetLevel(logrus.DebugLevel)
 
 	loggers = append(loggers, log)
 	return log
+}
+
+func logFileOutput(path string) io.Writer {
+	return &lumberjack.Logger{
+		Filename: path,
+	}
 }

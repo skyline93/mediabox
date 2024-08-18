@@ -53,6 +53,7 @@ func registerRoutes(router *gin.Engine, conf *config.Config) {
 	api.ImportPhoto(APIv1, conf)
 	api.ListPhotos(APIv1, conf)
 	api.GetPhotoFile(APIv1, conf)
+	api.DeletePhotos(APIv1, conf)
 
 	api.CreateAlbum(APIv1, conf)
 	api.ListAlbums(APIv1, conf)
@@ -113,6 +114,21 @@ func Start(conf *config.Config) {
 
 	logger.Info("start server")
 	go StartHttp(ctx, conf)
+
+	ticker := time.NewTicker(60 * time.Second)
+	defer ticker.Stop()
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				err := mediabox.CleanUpExpiredPhotos(conf)
+				if err != nil {
+					logger.Errorf("Error cleaning up expired photos: %v", err)
+				}
+			}
+		}
+	}()
 
 	mediabox.VipsInit()
 

@@ -227,3 +227,23 @@ func GetPhotoFile(router *gin.RouterGroup, conf *config.Config) {
 
 	router.GET("/photo/thumbnail/*path", handler)
 }
+
+func DeletePhotos(router *gin.RouterGroup, conf *config.Config) {
+	handler := func(c *gin.Context) {
+		var ids []uint
+		if err := c.BindJSON(&ids); err != nil {
+			c.JSON(http.StatusBadRequest, Error(400, "Invalid request payload"))
+			return
+		}
+
+		err := entity.DeletePhotos(ids)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, Error(400, "Failed to delete photos"))
+			return
+		}
+
+		c.JSON(http.StatusOK, Success("Photos marked as deleted"))
+	}
+
+	router.DELETE("/photo", handler)
+}
