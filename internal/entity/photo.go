@@ -85,25 +85,40 @@ func (s *Photo) SetIsImported(isImported bool) error {
 	return nil
 }
 
-func ListPhotos(userName string, albumID uint) ([]Photo, error) {
+func ListPhotos(userName string, albumID uint, page, pageSize int) ([]Photo, int, int, error) {
 	var user User
 
 	err := Db().Model(&User{}).Where("name = ?", userName).Preload("Albums").First(&user).Error
 	if err != nil {
-		return nil, err
+		return nil, 0, 0, err
 	}
 
 	for _, album := range user.Albums {
 		if album.ID == albumID {
 			var alb Album
-			err := Db().Model(&Album{}).Where("id = ?", albumID).Preload("Photos").First(&alb).Error
+			var totalPhotos int64
+
+			err := Db().Model(&Photo{}).Where("album_id = ?", albumID).Count(&totalPhotos).Error
 			if err != nil {
-				return nil, err
+				return nil, 0, 0, err
 			}
 
-			return alb.Photos, nil
+			totalPages := int((totalPhotos + int64(pageSize) - 1) / int64(pageSize))
+
+			offset := (page - 1) * pageSize
+			err = Db().Model(&Album{}).Where("id = ?", albumID).
+				Preload("Photos", func(db *gorm.DB) *gorm.DB {
+					return db.Offset(offset).Limit(pageSize)
+				}).
+				First(&alb).Error
+
+			if err != nil {
+				return nil, 0, 0, err
+			}
+
+			return alb.Photos, int(totalPhotos), totalPages, nil
 		}
 	}
 
-	return nil, fmt.Errorf("album is not exists")
+	return nil, 0, 0, fmt.Errorf("album does not exist")
 }

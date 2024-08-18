@@ -138,6 +138,14 @@ func ImportPhoto(router *gin.RouterGroup, conf *config.Config) {
 	router.POST("/photo/import", handler)
 }
 
+type ListPhotosResponse struct {
+	Items     []entity.Photo `json:"items"`
+	TotalNum  int            `json:"total_num"`
+	TotalPage int            `json:"total_page"`
+	Page      int            `json:"page"`
+	Limit     int            `json:"limit"`
+}
+
 // GetPhotos godoc
 //
 //	@Summary		Get photos
@@ -159,6 +167,8 @@ func ListPhotos(router *gin.RouterGroup, conf *config.Config) {
 		user := entity.FindUser(username.(string))
 
 		albumID, _ := strconv.Atoi(c.Query("album_id"))
+		page, _ := strconv.Atoi(c.Query("page"))
+		limit, _ := strconv.Atoi(c.Query("limit"))
 
 		var album *entity.Album
 		for _, alb := range user.Albums {
@@ -173,7 +183,7 @@ func ListPhotos(router *gin.RouterGroup, conf *config.Config) {
 			return
 		}
 
-		photos, err := entity.ListPhotos(username.(string), album.ID)
+		photos, totalNum, totalPage, err := entity.ListPhotos(username.(string), album.ID, page, limit)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, Error(400, "Failed to import photo"))
 			return
@@ -184,7 +194,13 @@ func ListPhotos(router *gin.RouterGroup, conf *config.Config) {
 			photos[i].Link = link
 		}
 
-		c.JSON(http.StatusOK, Success(photos))
+		c.JSON(http.StatusOK, ListPhotosResponse{
+			Items:     photos,
+			TotalNum:  totalNum,
+			TotalPage: totalPage,
+			Page:      page,
+			Limit:     limit,
+		})
 	}
 
 	router.GET("/photo", handler)

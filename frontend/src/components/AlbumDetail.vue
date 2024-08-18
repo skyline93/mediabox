@@ -32,6 +32,19 @@
             </div>
         </div>
     </div>
+    <div class="pagination">
+        <button @click="previousPage" :disabled="page === 1">上一页</button>
+        <span>当前页: {{ page }} / {{ totalPage }}</span>
+        <button @click="nextPage" :disabled="page === totalPage">下一页</button>
+
+        <label for="limit-select">每页显示数量：</label>
+        <select id="limit-select" v-model="limit" @change="fetchImages" class="styled-select">
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+        </select>
+    </div>
 </template>
 
 <script setup>
@@ -52,11 +65,27 @@ const selectedFiles = ref([]);
 const route = useRoute();
 const albumId = route.params.id;
 
+const totalNum = ref(0);
+const totalPage = ref(0);
+const page = ref(1);
+const limit = ref(10);
+
 const fetchImages = async () => {
+    loading.value = true;
     try {
-        const response = await axiosInstance.get(`/api/v1/photo?album_id=${albumId}`);
-        images.value = response.data.data;
-        imageUrls.value = await Promise.all(response.data.data.map(async (image) => {
+        const response = await axiosInstance.get(`/api/v1/photo?album_id=${albumId}&page=${page.value}&limit=${limit.value}`);
+
+        // 更新照片列表
+        images.value = response.data.items;
+
+        // 更新分页相关数据
+        totalNum.value = response.data.total_num;
+        totalPage.value = response.data.total_page;
+        page.value = response.data.page;
+        limit.value = response.data.limit;
+
+        // 更新图片URL
+        imageUrls.value = await Promise.all(response.data.items.map(async (image) => {
             const url = getFullImageUrl(image.link);
             return await getImageBlob(url);
         }));
@@ -135,6 +164,20 @@ const confirmUpload = async () => {
     }
 };
 
+const previousPage = () => {
+    if (page.value > 1) {
+        page.value--;
+        fetchImages();
+    }
+};
+
+const nextPage = () => {
+    if (page.value < totalPage.value) {
+        page.value++;
+        fetchImages();
+    }
+};
+
 onMounted(async () => {
     const lgThumbnail = await import('lightgallery/plugins/thumbnail/lg-thumbnail.es5.js');
     const lgFullscreen = await import('lightgallery/plugins/fullscreen/lg-fullscreen.es5.js');
@@ -150,7 +193,6 @@ onMounted(async () => {
     fetchImages();
 });
 </script>
-
 
 <style scoped>
 .header {
@@ -262,14 +304,71 @@ onMounted(async () => {
 }
 
 .gallery-item img {
-    width: 15%;
-    height: 5%;
+    width: 5%;
+    height: 80%;
     object-fit: cover;
 }
 
 .loading {
     font-size: 1.2em;
     text-align: center;
-    width: 100%;
+    width: 50%;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.pagination button {
+    background-color: #42b983;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 0 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.pagination button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.upload-button,
+.styled-select {
+    background-color: #42b983;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-left: 10px;
+}
+
+.upload-button:hover,
+.styled-select:hover {
+    background-color: #369b72;
+}
+
+.styled-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    text-align: center;
+    padding-right: 30px;
+    position: relative;
+}
+
+.select-limit {
+    display: flex;
+    align-items: center;
+}
+
+.select-limit label {
+    margin-right: 10px;
 }
 </style>
