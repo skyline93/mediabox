@@ -35,18 +35,18 @@ ARG USER_ID
 ARG GROUP_ID
 
 RUN if ! getent group $GROUP_ID; then \
-        groupadd -g $GROUP_ID dev; \
+        groupadd -g $GROUP_ID mediabox; \
     fi && \
-    useradd -m -u $USER_ID -g $GROUP_ID dev && \
-    echo "dev ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+    useradd -m -u $USER_ID -g $GROUP_ID mediabox && \
+    echo "mediabox ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-USER dev
+USER mediabox
 
 ENV CGO_ENABLED='1'
 ENV GO111MODULE=on
-ENV GOPROXY='https://goproxy.io,direct'
+ENV GOPROXY='https://goproxy.cn,direct'
 
-WORKDIR /project
+WORKDIR /mediabox
 
 RUN sh -c "$(curl -fsSL https://gitee.com/mirrors/oh-my-zsh/raw/master/tools/install.sh)" "" --unattended \
     && go install github.com/swaggo/swag/cmd/swag@latest
@@ -55,8 +55,8 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-WORKDIR /project/src
+WORKDIR /mediabox/src
 
 EXPOSE 8000 8001
 
-CMD [ "zsh" ]
+CMD ["tail", "-f", "/dev/null"]

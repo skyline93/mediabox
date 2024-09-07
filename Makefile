@@ -1,3 +1,5 @@
+UID := $(shell id -u)
+
 build-all: swag build-go
 
 build-go:
@@ -12,7 +14,11 @@ build-dev:
 	docker build --build-arg SOURCE_MIRROR=$$SOURCE_MIRROR --build-arg USER_ID=$$(id -u) --build-arg GROUP_ID=$$(id -g) -t mediabox-dev:latest .
 
 terminal:
-	docker run -it --rm -v $$(pwd):/project/src -w /project/src --user $$(id -u):$$(id -g) mediabox-dev:latest
+	docker compose exec -it mediabox zsh
+
+build-prd:
+	docker build -t mediabox:latest -f docker/Dockerfile .
+	docker build -t mediabox-frontend:latest -f docker/Dockerfile-frontend .
 
 clean:
 	rm -rf mediabox mediabox-agent* logs/*

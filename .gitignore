@@ -32,3 +32,4 @@ storage
 *.db
 logs
 .vscode
+mediabox-data

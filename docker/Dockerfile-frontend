@@ -1,0 +1,17 @@
+FROM mediabox-dev:latest AS build
+
+USER root
+
+WORKDIR "/mediabox/src"
+COPY ./frontend .
+
+RUN npm install \
+    && npm run build
+
+######################### PRODUCTION STAGE ###############################
+FROM nginx:latest
+
+COPY --from=build /mediabox/src/dist /usr/share/nginx/html
+COPY ./docker/nginx.conf /etc/nginx/nginx.conf
+
+EXPOSE 80
