@@ -1,3 +1,4 @@
+SOURCE_MIRROR ?= http://mirrors.aliyun.com/debian
 UID := $(shell id -u)
 
 build-all: swag build-go
@@ -11,7 +12,7 @@ swag:
 	swag fmt -g ./internal/api/api.go
 
 build-dev:
-	docker build --build-arg SOURCE_MIRROR=$$SOURCE_MIRROR --build-arg USER_ID=$$(id -u) --build-arg GROUP_ID=$$(id -g) -t mediabox-dev:latest .
+	docker build --build-arg SOURCE_MIRROR=$(SOURCE_MIRROR) --build-arg USER_ID=$$(id -u) --build-arg GROUP_ID=$$(id -g) -t mediabox-dev:latest .
 
 terminal:
 	docker compose exec -it mediabox zsh
