@@ -46,3 +46,11 @@ EOF
 ```bash
 vue create frontend
 ```
+
+## build dev with docker
+```bash
+make build-dev
+docker compose up -d
+make terminal
+```
+

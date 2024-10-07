@@ -2,8 +2,9 @@
     <div class="album-details">
         <div class="header">
             <h1>Album Photos</h1>
+            <button class="select-button" @click="toggleSelectMode">{{ selectMode ? '取消选择' : '选择' }}</button>
             <button class="upload-button" @click="openModal">上传图片</button>
-            <button class="delete-selected-button" @click="deleteSelectedPhotos">删除选中的照片</button>
+            <button class="delete-selected-button" @click="deleteSelectedPhotos" v-if="selectMode">删除选中的照片</button>
         </div>
 
         <div v-if="isModalOpen" class="modal">
@@ -25,12 +26,12 @@
         <div v-if="loading" class="loading">加载中...</div>
         <div v-else class="gallery-container">
             <div ref="lightGalleryRef" class="gallery">
-                <LightGallery :speed="500" licenseKey="0000-0000-000-0000">
-                    <a v-for="(image, index) in images" :key="index" :href="imageUrls[index]" class="gallery-item">
+                <a v-for="(image, index) in images" :key="index" :href="imageUrls[index]" class="gallery-item">
+                    <LightGallery :speed="500" licenseKey="0000-0000-000-0000">
                         <img :src="imageUrls[index]" :alt="image.file_name" />
-                        <input type="checkbox" v-model="selectedImages" :value="image.id" class="select-checkbox" @click.stop />
-                    </a>
-                </LightGallery>
+                        <input type="checkbox" v-model="selectedImages" :value="image.id" class="select-checkbox" v-if="selectMode" @click.stop />
+                    </LightGallery>
+                </a>
             </div>
         </div>
 
@@ -72,7 +73,8 @@ const albumId = route.params.id;
 const totalNum = ref(0);
 const totalPage = ref(0);
 const page = ref(1);
-const limit = ref(10);
+const limit = ref(20);
+const selectMode = ref(false); // 添加选择模式状态
 
 const fetchImages = async () => {
     loading.value = true;
@@ -97,6 +99,13 @@ const fetchImages = async () => {
         console.error('Error fetching images:', error);
     } finally {
         loading.value = false;
+    }
+};
+
+const toggleSelectMode = () => {
+    selectMode.value = !selectMode.value; // 切换选择模式
+    if (!selectMode.value) {
+        selectedImages.value = []; // 取消选择时清空已选中的图片
     }
 };
 
@@ -323,8 +332,8 @@ onMounted(async () => {
 }
 
 .gallery-container {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    flex-direction: row;
     align-items: center;
     padding: 10px;
     box-sizing: border-box;
@@ -332,8 +341,8 @@ onMounted(async () => {
 
 .gallery {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 5px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 2px;
     flex-direction: column;
     align-items: center;
 }
@@ -342,14 +351,22 @@ onMounted(async () => {
     position: relative;
     width: auto;
     height: auto;
-    max-width: 50px; 
+    max-width: 100%; 
     margin-bottom: 10px;
+    overflow: hidden;
+    aspect-ratio: 1 / 1; /* 设置宽高比为1:1 */
 }
 
 .gallery-item img {
-    width: 100%;
-    height: auto;
-    object-fit: cover;
+    width: 100%; /* 使图片宽度自适应 */
+    height: 100%; /* 使图片高度自适应 */
+    object-fit: cover; /* 保持纵横比，裁剪多余部分 */
+    transition: transform 0.3s; /* 添加过渡效果 */
+    aspect-ratio: auto; /* 对于横版图片，设置不同的宽高比 */
+}
+
+.gallery-item img:hover {
+    transform: scale(1.02); /* 悬停时放大效果 */
 }
 
 .select-checkbox {
@@ -423,5 +440,19 @@ onMounted(async () => {
 
 .select-limit label {
     margin-right: 10px;
+}
+
+.select-button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.select-button:hover {
+    background-color: #2980b9;
 }
 </style>

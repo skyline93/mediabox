@@ -57,6 +57,7 @@ func registerRoutes(router *gin.Engine, conf *config.Config) {
 
 	api.CreateAlbum(APIv1, conf)
 	api.ListAlbums(APIv1, conf)
+	api.UpdateAlbum(APIv1, conf)
 }
 
 func StartHttp(ctx context.Context, conf *config.Config) {

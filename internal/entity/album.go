@@ -13,6 +13,7 @@ type Album struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
+	UUID   string  `json:"uuid"`
 	Name   string  `gorm:"size:200;index;" json:"name"`
 	Users  []User  `gorm:"many2many:users_albums;" json:"-"`
 	Photos []Photo `gorm:"many2many:photos_albums;" json:"-"`
@@ -40,7 +41,7 @@ func ExistsAlbum(name string, userName string) bool {
 }
 
 func (s *Album) Create(name string, userID uint) (*Album, error) {
-	album := &Album{Name: s.Name}
+	album := &Album{Name: s.Name, UUID: s.UUID}
 
 	if err := Db().Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(album).Error; err != nil {
