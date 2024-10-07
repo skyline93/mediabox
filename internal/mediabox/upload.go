@@ -13,8 +13,8 @@ func GenerateUniqueFilename(originalFilename string) string {
 	return originalFilename + "_" + time.Now().Format("2006-01-02_15-04-05")
 }
 
-func UploadPhoto(userName string, albumUUID string, uniqueFileName string, file io.Reader, conf *config.Config) error {
-	userDir := filepath.Join(conf.StoragePath, "uploads", userName, albumUUID)
+func UploadPhoto(userUUID string, albumUUID string, uniqueFileName string, file io.Reader, conf *config.Config) error {
+	userDir := filepath.Join(conf.StoragePath, "uploads", userUUID, albumUUID)
 	if _, err := os.Stat(userDir); os.IsNotExist(err) {
 		err := os.MkdirAll(userDir, os.ModePerm)
 		if err != nil {

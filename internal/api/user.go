@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/skyline93/mediabox/internal/auth"
 	"github.com/skyline93/mediabox/internal/entity"
 
@@ -97,7 +98,8 @@ func Register(router *gin.Engine) {
 			role = json.Role
 		}
 
-		if err := entity.CreateUser(json.Username, string(hashedPassword), role); err != nil {
+		uid := uuid.New()
+		if err := entity.CreateUser(json.Username, string(hashedPassword), role, uid.String()); err != nil {
 			c.JSON(http.StatusInternalServerError, Error(400, "User registered failed"))
 			return
 		}

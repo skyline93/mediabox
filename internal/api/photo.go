@@ -87,7 +87,7 @@ func UploadPhoto(router *gin.RouterGroup, conf *config.Config) {
 			}
 			defer src.Close()
 
-			if err := mediabox.UploadPhoto(username.(string), album.UUID, uniqueFileName, src, conf); err != nil {
+			if err := mediabox.UploadPhoto(user.UUID, album.UUID, uniqueFileName, src, conf); err != nil {
 				c.JSON(http.StatusInternalServerError, Error(400, "Failed to save file"))
 				return
 			}
@@ -190,7 +190,7 @@ func ListPhotos(router *gin.RouterGroup, conf *config.Config) {
 		}
 
 		for i := range photos {
-			link := router.BasePath() + fmt.Sprintf("/photo/thumbnail/%s/%s.jpg", filepath.Join(user.Name, album.UUID), photos[i].FileName)
+			link := router.BasePath() + fmt.Sprintf("/photo/thumbnail/%s/%s.jpg", filepath.Join(user.UUID, album.UUID), photos[i].FileName)
 			photos[i].Link = link
 		}
 

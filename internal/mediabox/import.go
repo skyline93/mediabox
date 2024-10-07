@@ -23,9 +23,9 @@ func ImportOriginals(userName string, conf *config.Config) error {
 
 		logger.Debugf("import at photos, %v", photos)
 		for _, photo := range photos {
-			filePath := filepath.Join(conf.StoragePath, "uploads", userName, album.UUID, photo.FileName)
+			filePath := filepath.Join(conf.StoragePath, "uploads", user.UUID, album.UUID, photo.FileName)
 
-			originalsPath := filepath.Join(conf.StoragePath, "originals", userName, album.UUID)
+			originalsPath := filepath.Join(conf.StoragePath, "originals", user.UUID, album.UUID)
 			if _, err := os.Stat(originalsPath); os.IsNotExist(err) {
 				err := os.MkdirAll(originalsPath, os.ModePerm)
 				if err != nil {
@@ -46,7 +46,7 @@ func ImportOriginals(userName string, conf *config.Config) error {
 				continue
 			}
 
-			thumbnailsPath := filepath.Join(conf.StoragePath, "thumbnails", userName, album.UUID)
+			thumbnailsPath := filepath.Join(conf.StoragePath, "thumbnails", user.UUID, album.UUID)
 			if _, err := os.Stat(thumbnailsPath); os.IsNotExist(err) {
 				err := os.MkdirAll(thumbnailsPath, os.ModePerm)
 				if err != nil {
@@ -88,7 +88,7 @@ func ImportOriginalsFromWebDAV(userName string, conf *config.Config) error {
 			contentType := mime.TypeByExtension(filepath.Ext(fileInfo.Path))
 			uniqueFileName := GenerateUniqueFilename(fileInfo.Info.Name())
 
-			originalsPath := filepath.Join(conf.StoragePath, "originals", userName, album.UUID)
+			originalsPath := filepath.Join(conf.StoragePath, "originals", user.UUID, album.UUID)
 			if _, err := os.Stat(originalsPath); os.IsNotExist(err) {
 				err := os.MkdirAll(originalsPath, os.ModePerm)
 				if err != nil {
@@ -123,7 +123,7 @@ func ImportOriginalsFromWebDAV(userName string, conf *config.Config) error {
 				return
 			}
 
-			thumbnailsPath := filepath.Join(conf.StoragePath, "thumbnails", userName, album.UUID)
+			thumbnailsPath := filepath.Join(conf.StoragePath, "thumbnails", user.UUID, album.UUID)
 			if _, err := os.Stat(thumbnailsPath); os.IsNotExist(err) {
 				err := os.MkdirAll(thumbnailsPath, os.ModePerm)
 				if err != nil {

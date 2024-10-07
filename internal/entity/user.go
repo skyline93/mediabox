@@ -13,7 +13,8 @@ type User struct {
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 
-	Name     string  `gorm:"size:200;index;"`
+	Name     string `gorm:"size:200;index;"`
+	UUID     string
 	Password string  `gorm:"size:500"`
 	Role     string  `gorm:"size:60"`
 	Albums   []Album `gorm:"many2many:users_albums;" yaml:"-"`
@@ -27,8 +28,8 @@ func (u *User) InvalidPassword(s string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(s)) == nil
 }
 
-func CreateUser(name, password, role string) error {
-	if err := Db().Create(&User{Name: name, Password: password, Role: role}).Error; err != nil {
+func CreateUser(name, password, role, uuid string) error {
+	if err := Db().Create(&User{Name: name, Password: password, Role: role, UUID: uuid}).Error; err != nil {
 		return err
 	}
 
