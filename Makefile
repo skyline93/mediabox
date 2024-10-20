@@ -22,4 +22,5 @@ build-prd:
 	docker build -t mediabox-frontend:latest -f docker/Dockerfile-frontend .
 
 clean:
-	rm -rf mediabox mediabox-agent* logs/*
+	docker compose down
+	rm -rf mediabox mediabox-agent* logs/* mediabox-data

@@ -9,6 +9,8 @@ import (
 
 	"github.com/skyline93/mediabox/internal/config"
 	"github.com/skyline93/mediabox/internal/entity"
+	"github.com/skyline93/mediabox/internal/fs"
+	"github.com/skyline93/mediabox/internal/mediabox/image"
 )
 
 func ImportOriginals(userName string, conf *config.Config) error {
@@ -23,7 +25,14 @@ func ImportOriginals(userName string, conf *config.Config) error {
 
 		logger.Debugf("import at photos, %v", photos)
 		for _, photo := range photos {
-			filePath := filepath.Join(conf.StoragePath, "uploads", user.UUID, album.UUID, photo.FileName)
+			uPath := filepath.Join(conf.StoragePath, "uploads", user.UUID, album.UUID, photo.FileName)
+			uploadPath := filepath.Join(conf.StoragePath, "uploads", user.UUID, album.UUID, photo.Name)
+
+			logger.Debugf("rename %s to %s", uPath, uploadPath)
+			if err := os.Rename(uPath, uploadPath); err != nil {
+				logger.Debugf("rename failed, err: %s", err)
+				continue
+			}
 
 			originalsPath := filepath.Join(conf.StoragePath, "originals", user.UUID, album.UUID)
 			if _, err := os.Stat(originalsPath); os.IsNotExist(err) {
@@ -34,17 +43,6 @@ func ImportOriginals(userName string, conf *config.Config) error {
 			}
 
 			destPath := filepath.Join(originalsPath, photo.FileName)
-			logger.Debugf("rename %s to %s", filePath, destPath)
-			if err := os.Rename(filePath, destPath); err != nil {
-				logger.Debugf("rename failed, err: %s", err)
-				continue
-			}
-
-			logger.Debugf("set photo %d to imported", photo.ID)
-			if err := photo.SetIsImported(true); err != nil {
-				logger.Debugf("set is imported failed, err : %s", err)
-				continue
-			}
 
 			thumbnailsPath := filepath.Join(conf.StoragePath, "thumbnails", user.UUID, album.UUID)
 			if _, err := os.Stat(thumbnailsPath); os.IsNotExist(err) {
@@ -55,10 +53,23 @@ func ImportOriginals(userName string, conf *config.Config) error {
 			}
 
 			thumbnailPath := filepath.Join(thumbnailsPath, fmt.Sprintf("%s.jpg", photo.FileName))
-			if err = CreateThumbnail(destPath, thumbnailPath); err != nil {
+			if err = image.CreateThumbnail(uploadPath, thumbnailPath, fs.IsRAWData(photo.Ext)); err != nil {
 				logger.Debugf("create thumbnail failed, err: %s", err)
 				continue
 			}
+
+			logger.Debugf("rename %s to %s", uploadPath, destPath)
+			if err := os.Rename(uploadPath, destPath); err != nil {
+				logger.Debugf("rename failed, err: %s", err)
+				continue
+			}
+
+			logger.Debugf("set photo %d to imported", photo.ID)
+			if err := photo.SetIsImported(true); err != nil {
+				logger.Debugf("set is imported failed, err : %s", err)
+				continue
+			}
+
 		}
 	}
 
@@ -107,19 +118,8 @@ func ImportOriginalsFromWebDAV(userName string, conf *config.Config) error {
 
 			destPath := filepath.Join(originalsPath, photo.FileName)
 
-			logger.Debugf("rename %s to %s", fileInfo.Path, destPath)
-			if err := os.Rename(fileInfo.Path, destPath); err != nil {
-				logger.Debugf("rename failed, err: %s", err)
-				return
-			}
-
 			pho, err := photo.Create(album.ID)
 			if err != nil {
-				return
-			}
-
-			if err := pho.SetIsImported(true); err != nil {
-				logger.Debugf("set is imported failed, err : %s", err)
 				return
 			}
 
@@ -132,8 +132,19 @@ func ImportOriginalsFromWebDAV(userName string, conf *config.Config) error {
 			}
 
 			thumbnailPath := filepath.Join(thumbnailsPath, fmt.Sprintf("%s.jpg", photo.FileName))
-			if err = CreateThumbnail(destPath, thumbnailPath); err != nil {
+			if err = image.CreateThumbnail(destPath, thumbnailPath, fs.IsRAWData(pho.Ext)); err != nil {
 				logger.Debugf("create thumbnail failed, err: %s", err)
+				return
+			}
+
+			logger.Debugf("rename %s to %s", fileInfo.Path, destPath)
+			if err := os.Rename(fileInfo.Path, destPath); err != nil {
+				logger.Debugf("rename failed, err: %s", err)
+				return
+			}
+
+			if err := pho.SetIsImported(true); err != nil {
+				logger.Debugf("set is imported failed, err : %s", err)
 				return
 			}
 		}(fileInfo)

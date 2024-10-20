@@ -26,6 +26,7 @@ RUN if [ -n "$SOURCE_MIRROR" ]; then \
       libxinerama1 \
       libxxf86vm1 \
       libxrandr2 \
+      exiftool \
       --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \

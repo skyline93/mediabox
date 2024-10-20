@@ -16,6 +16,7 @@ import (
 	"github.com/skyline93/mediabox/internal/config"
 	"github.com/skyline93/mediabox/internal/log"
 	"github.com/skyline93/mediabox/internal/mediabox"
+	"github.com/skyline93/mediabox/internal/mediabox/image"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -131,7 +132,7 @@ func Start(conf *config.Config) {
 		}
 	}()
 
-	mediabox.VipsInit()
+	image.VipsInstance.Init()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
@@ -141,7 +142,7 @@ func Start(conf *config.Config) {
 	logger.Info("shutting down...")
 	cancel()
 
-	mediabox.VipsShutdown()
+	image.VipsInstance.Shutdown()
 
 	time.Sleep(2 * time.Second)
 

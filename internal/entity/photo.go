@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/skyline93/mediabox/internal/fs"
 	"gorm.io/gorm"
 )
 
@@ -13,12 +14,13 @@ type Photo struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	Name       string `gorm:"size:200;index;" json:"name"`
-	FileName   string `gorm:"size:300;index;" json:"file_name"`
-	FileHash   string `gorm:"size:128;index" json:"file_hash"`
-	FileSize   int64  `json:"file_size"`
-	FileType   string `gorm:"size:16" json:"file_type"`
-	IsImported bool   `gorm:"default:false" json:"is_imported"`
+	Name       string      `gorm:"size:200;index;" json:"name"`
+	FileName   string      `gorm:"size:300;index;" json:"file_name"`
+	FileHash   string      `gorm:"size:128;index" json:"file_hash"`
+	FileSize   int64       `json:"file_size"`
+	FileType   string      `gorm:"size:16" json:"file_type"`
+	Ext        fs.FileType `json:"ext"`
+	IsImported bool        `gorm:"default:false" json:"is_imported"`
 
 	ExpiredAt *time.Time `json:"expired_at"`
 	IsValid   bool       `gorm:"default:true" json:"is_valid"`
@@ -46,6 +48,7 @@ func (s *Photo) Create(albumID uint) (*Photo, error) {
 		IsImported: false,
 		AlbumID:    s.AlbumID,
 		UserID:     s.UserID,
+		Ext:        s.Ext,
 	}
 
 	if err := Db().Transaction(func(tx *gorm.DB) error {

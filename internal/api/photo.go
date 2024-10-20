@@ -3,7 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
-	"io/fs"
+	iofs "io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/skyline93/mediabox/internal/config"
 	"github.com/skyline93/mediabox/internal/entity"
+	"github.com/skyline93/mediabox/internal/fs"
 	"github.com/skyline93/mediabox/internal/mediabox"
 
 	"github.com/gin-gonic/gin"
@@ -78,6 +79,7 @@ func UploadPhoto(router *gin.RouterGroup, conf *config.Config) {
 				FileType: strings.Split(file.Header.Get("Content-Type"), ";")[0],
 				AlbumID:  album.ID,
 				UserID:   user.ID,
+				Ext:      fs.FileType(strings.ToLower(strings.TrimPrefix(filepath.Ext(file.Filename), "."))),
 			}
 
 			src, err := file.Open()
@@ -212,7 +214,7 @@ func GetPhotoFile(router *gin.RouterGroup, conf *config.Config) {
 
 		file, err := os.ReadFile(filepath.Join(conf.StoragePath, "thumbnails", path))
 		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
+			if errors.Is(err, iofs.ErrNotExist) {
 				c.JSON(http.StatusNotFound, Error(400, "File not found"))
 				return
 			}
