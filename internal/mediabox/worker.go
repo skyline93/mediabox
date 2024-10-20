@@ -1,4 +1,4 @@
-package image
+package mediabox
 
 import (
 	"context"
@@ -13,7 +13,7 @@ var Pool *WorkerPool
 
 func InitWorkPool() {
 	ctx := context.TODO()
-	Pool = NewPool(ctx, 10)
+	Pool = NewPool(ctx, 1)
 }
 
 type Job interface {
@@ -31,9 +31,15 @@ type WorkerPool struct {
 	cancelWorkerChan chan struct{}
 
 	ctx context.Context
+
+	cancel   context.CancelFunc
+	stopChan chan struct{}
+	wg       sync.WaitGroup // 用于等待所有 worker 完成
 }
 
 func NewPool(ctx context.Context, concurrent int) *WorkerPool {
+	ctx, cancel := context.WithCancel(ctx)
+
 	p := &WorkerPool{
 		JobChan:          make(chan Job),
 		addWorkerChan:    make(chan struct{}),
@@ -41,13 +47,20 @@ func NewPool(ctx context.Context, concurrent int) *WorkerPool {
 		Concurrency:      concurrent,
 		Workers:          make(map[string]Worker),
 		ctx:              ctx,
+		cancel:           cancel,
+		stopChan:         make(chan struct{}),
 	}
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
 	go func() {
 		for {
 			select {
 			case <-p.addWorkerChan:
-				w := New(p.ctx, p.JobChan)
+				p.wg.Add(1) // 增加等待组计数器
+
+				w := New(p.ctx, p.JobChan, &p.wg)
 				go w.Run()
 				log.Printf("new worker [%s]", w.ID)
 
@@ -73,7 +86,7 @@ func NewPool(ctx context.Context, concurrent int) *WorkerPool {
 				log.Printf("remove worker [%s] from pool", worker.ID)
 				p.mut.Unlock()
 
-			case <-time.Tick(time.Second * 1):
+			case <-ticker.C:
 				if len(p.Workers) < p.Concurrency {
 					go func() {
 						p.addWorkerChan <- struct{}{}
@@ -85,6 +98,17 @@ func NewPool(ctx context.Context, concurrent int) *WorkerPool {
 						p.cancelWorkerChan <- struct{}{}
 					}()
 				}
+
+			case <-p.stopChan:
+				log.Println("stopping worker pool")
+				p.cancel()
+				p.mut.Lock()
+				for _, w := range p.Workers {
+					w.Cancel()
+				}
+				p.mut.Unlock()
+				close(p.JobChan)
+				return
 			}
 		}
 	}()
@@ -117,9 +141,11 @@ type Worker struct {
 
 	ctx    context.Context
 	Cancel context.CancelFunc
+
+	wg *sync.WaitGroup
 }
 
-func New(ctx context.Context, jobChan chan Job) *Worker {
+func New(ctx context.Context, jobChan chan Job, wg *sync.WaitGroup) *Worker {
 	c, cancel := context.WithCancel(ctx)
 
 	return &Worker{
@@ -128,10 +154,13 @@ func New(ctx context.Context, jobChan chan Job) *Worker {
 
 		ctx:    c,
 		Cancel: cancel,
+		wg:     wg,
 	}
 }
 
 func (w *Worker) Run() {
+	defer w.wg.Done()
+
 	for {
 		select {
 		case job := <-w.jobChan:
@@ -156,4 +185,12 @@ func (w *Worker) run(j Job) {
 
 func (w *Worker) Submit(j Job) {
 	w.jobChan <- j
+}
+
+func (p *WorkerPool) Stop() {
+	close(p.stopChan)
+}
+
+func (p *WorkerPool) Wait() {
+	p.wg.Wait()
 }

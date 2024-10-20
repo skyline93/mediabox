@@ -134,6 +134,8 @@ func Start(conf *config.Config) {
 
 	image.VipsInstance.Init()
 
+	mediabox.InitWorkPool()
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
 
@@ -142,7 +144,14 @@ func Start(conf *config.Config) {
 	logger.Info("shutting down...")
 	cancel()
 
+	logger.Info("close vips...")
 	image.VipsInstance.Shutdown()
+
+	logger.Info("close worker pool...")
+	mediabox.Pool.Stop()
+
+	logger.Info("wait worker pool exit...")
+	mediabox.Pool.Wait()
 
 	time.Sleep(2 * time.Second)
 

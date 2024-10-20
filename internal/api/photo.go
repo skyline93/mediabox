@@ -124,15 +124,17 @@ func ImportPhoto(router *gin.RouterGroup, conf *config.Config) {
 			return
 		}
 
-		if err := mediabox.ImportOriginals(username.(string), conf); err != nil {
-			c.JSON(http.StatusInternalServerError, Error(400, "Failed to import photo"))
-			return
-		}
+		go mediabox.ImportOriginalsNew(username.(string), conf)
 
-		if err := mediabox.ImportOriginalsFromWebDAV(username.(string), conf); err != nil {
-			c.JSON(http.StatusInternalServerError, Error(400, "Failed to import photo"))
-			return
-		}
+		// if err := mediabox.ImportOriginals(username.(string), conf); err != nil {
+		// 	c.JSON(http.StatusInternalServerError, Error(400, "Failed to import photo"))
+		// 	return
+		// }
+
+		// if err := mediabox.ImportOriginalsFromWebDAV(username.(string), conf); err != nil {
+		// 	c.JSON(http.StatusInternalServerError, Error(400, "Failed to import photo"))
+		// 	return
+		// }
 
 		c.JSON(http.StatusOK, Success("import successfully"))
 	}

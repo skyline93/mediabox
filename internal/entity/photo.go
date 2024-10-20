@@ -18,7 +18,7 @@ type Photo struct {
 	FileName   string      `gorm:"size:300;index;" json:"file_name"`
 	FileHash   string      `gorm:"size:128;index" json:"file_hash"`
 	FileSize   int64       `json:"file_size"`
-	FileType   string      `gorm:"size:16" json:"file_type"`
+	FileType   string      `json:"file_type"`
 	Ext        fs.FileType `json:"ext"`
 	IsImported bool        `gorm:"default:false" json:"is_imported"`
 

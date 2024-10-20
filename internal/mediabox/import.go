@@ -13,6 +13,81 @@ import (
 	"github.com/skyline93/mediabox/internal/mediabox/image"
 )
 
+type ImportJob struct {
+	conf *config.Config
+
+	user  *entity.User
+	album *entity.Album
+	photo *entity.Photo
+}
+
+func (i *ImportJob) Run() {
+	uPath := filepath.Join(i.conf.StoragePath, "uploads", i.user.UUID, i.album.UUID, i.photo.FileName)
+	uploadPath := filepath.Join(i.conf.StoragePath, "uploads", i.user.UUID, i.album.UUID, i.photo.Name)
+
+	logger.Debugf("rename %s to %s", uPath, uploadPath)
+	if err := os.Rename(uPath, uploadPath); err != nil {
+		logger.Debugf("rename failed, err: %s", err)
+		return
+	}
+
+	originalsPath := filepath.Join(i.conf.StoragePath, "originals", i.user.UUID, i.album.UUID)
+	if _, err := os.Stat(originalsPath); os.IsNotExist(err) {
+		err := os.MkdirAll(originalsPath, os.ModePerm)
+		if err != nil {
+			return
+		}
+	}
+
+	destPath := filepath.Join(originalsPath, i.photo.FileName)
+
+	thumbnailsPath := filepath.Join(i.conf.StoragePath, "thumbnails", i.user.UUID, i.album.UUID)
+	if _, err := os.Stat(thumbnailsPath); os.IsNotExist(err) {
+		err := os.MkdirAll(thumbnailsPath, os.ModePerm)
+		if err != nil {
+			return
+		}
+	}
+
+	thumbnailPath := filepath.Join(thumbnailsPath, fmt.Sprintf("%s.jpg", i.photo.FileName))
+	if err := image.CreateThumbnail(uploadPath, thumbnailPath, fs.IsRAWData(i.photo.Ext)); err != nil {
+		logger.Debugf("create thumbnail failed, err: %s", err)
+		return
+	}
+
+	logger.Debugf("rename %s to %s", uploadPath, destPath)
+	if err := os.Rename(uploadPath, destPath); err != nil {
+		logger.Debugf("rename failed, err: %s", err)
+		return
+	}
+
+	logger.Debugf("set photo %d to imported", i.photo.ID)
+	if err := i.photo.SetIsImported(true); err != nil {
+		logger.Debugf("set is imported failed, err : %s", err)
+		return
+	}
+}
+
+func ImportOriginalsNew(userName string, conf *config.Config) {
+	user := entity.FindUser(userName)
+
+	logger.Debugf("import at albums, user %s, album: %v", userName, user.Albums)
+	for _, album := range user.Albums {
+		photos, err := entity.FindUnimportedPhotosByAlbum(album.ID)
+		if err != nil {
+			continue
+		}
+
+		logger.Debugf("import at photos, %v", photos)
+		for _, photo := range photos {
+			importer := ImportJob{conf: conf, user: user, album: &album, photo: &photo}
+
+			logger.Infof("submit importjob, photo: %d", photo.ID)
+			Pool.Submit(&importer)
+		}
+	}
+}
+
 func ImportOriginals(userName string, conf *config.Config) error {
 	user := entity.FindUser(userName)
 
