@@ -106,7 +106,7 @@ func ListPhotos(userName string, albumID uint, page, pageSize int) ([]Photo, int
 			var alb Album
 			var totalPhotos int64
 
-			err := Db().Model(&Photo{}).Where("album_id = ? AND is_valid = ?", albumID, true).Count(&totalPhotos).Error
+			err := Db().Model(&Photo{}).Where("album_id = ? AND is_valid = ? AND is_imported = ?", albumID, true, true).Count(&totalPhotos).Error
 			if err != nil {
 				return nil, 0, 0, err
 			}
@@ -116,7 +116,7 @@ func ListPhotos(userName string, albumID uint, page, pageSize int) ([]Photo, int
 			offset := (page - 1) * pageSize
 			err = Db().Model(&Album{}).Where("id = ?", albumID).
 				Preload("Photos", func(db *gorm.DB) *gorm.DB {
-					return db.Where("is_valid = ?", true).Offset(offset).Limit(pageSize)
+					return db.Where("is_valid = ? AND is_imported = ?", true, true).Offset(offset).Limit(pageSize)
 				}).
 				First(&alb).Error
 

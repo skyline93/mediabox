@@ -8,13 +8,15 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+var Pool *WorkerPool
+
 type Job interface {
 	Run() error
 }
 
 type WorkerPool struct {
-	JobChan     chan Job
-	Concurrency int
+	JobChan chan Job
+	Size    int
 
 	Workers map[string]worker
 	mut     sync.RWMutex
@@ -24,16 +26,18 @@ type WorkerPool struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	wg sync.WaitGroup
 }
 
-func NewWorkerPool(ctx context.Context, concurrent int) *WorkerPool {
+func NewWorkerPool(ctx context.Context, size int) *WorkerPool {
 	ctx, cancel := context.WithCancel(ctx)
 
 	return &WorkerPool{
-		JobChan:          make(chan Job),
+		JobChan:          make(chan Job, 100),
 		addWorkerChan:    make(chan struct{}),
 		cancelWorkerChan: make(chan struct{}),
-		Concurrency:      concurrent,
+		Size:             size,
 		Workers:          make(map[string]worker),
 		ctx:              ctx,
 		cancel:           cancel,
@@ -41,9 +45,12 @@ func NewWorkerPool(ctx context.Context, concurrent int) *WorkerPool {
 }
 
 func (p *WorkerPool) Run() {
-	for i := 0; i < p.Concurrency; i++ {
+	for i := 0; i < p.Size; i++ {
 		p.addWorker()
 	}
+
+	ticker := time.NewTicker(time.Second * 1)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -53,26 +60,30 @@ func (p *WorkerPool) Run() {
 		case <-p.cancelWorkerChan:
 			p.delOnceWorker()
 
-		case <-time.NewTicker(time.Second * 1).C:
-			if len(p.Workers) < p.Concurrency {
-				go func() {
-					p.addWorkerChan <- struct{}{}
-				}()
+		case <-ticker.C:
+			if len(p.Workers) < p.Size {
+				p.addWorkerChan <- struct{}{}
 			}
 
-			if len(p.Workers) > p.Concurrency {
-				go func() {
-					p.cancelWorkerChan <- struct{}{}
-				}()
+			if len(p.Workers) > p.Size {
+				p.cancelWorkerChan <- struct{}{}
 			}
 		case <-p.ctx.Done():
+			logger.Println("stopping worker pool")
+			p.mut.Lock()
+			for _, w := range p.Workers {
+				w.cancel()
+			}
+			p.mut.Unlock()
 			return
 		}
 	}
 }
 
 func (p *WorkerPool) addWorker() {
-	w := newWorker(p.ctx, p.JobChan)
+	p.wg.Add(1)
+
+	w := newWorker(p.ctx, p.JobChan, &p.wg)
 	go w.Run()
 	logger.Infof("new worker [%s]", w.ID)
 
@@ -94,7 +105,7 @@ func (p *WorkerPool) delOnceWorker() {
 	p.mut.RUnlock()
 
 	logger.Infof("cancel worker [%s]", worker.ID)
-	worker.Cancel()
+	worker.cancel()
 
 	p.mut.Lock()
 	delete(p.Workers, worker.ID)
@@ -104,11 +115,24 @@ func (p *WorkerPool) delOnceWorker() {
 }
 
 func (p *WorkerPool) Submit(j Job) {
+	if j == nil {
+		logger.Errorf("submit nil job")
+		return
+	}
+
+	logger.Infof("submit job")
 	p.JobChan <- j
 }
 
 func (p *WorkerPool) Scale(poolSize int) {
-	p.Concurrency = c
+	p.Size = poolSize
+}
+
+func (p *WorkerPool) Stop() {
+	close(p.JobChan)
+
+	p.wg.Wait()
+	p.cancel()
 }
 
 type worker struct {
@@ -116,10 +140,12 @@ type worker struct {
 	jobChan chan Job
 
 	ctx    context.Context
-	Cancel context.CancelFunc
+	cancel context.CancelFunc
+
+	wg *sync.WaitGroup
 }
 
-func newWorker(ctx context.Context, jobChan chan Job) *worker {
+func newWorker(ctx context.Context, jobChan chan Job, wg *sync.WaitGroup) *worker {
 	c, cancel := context.WithCancel(ctx)
 
 	return &worker{
@@ -127,11 +153,14 @@ func newWorker(ctx context.Context, jobChan chan Job) *worker {
 		jobChan: jobChan,
 
 		ctx:    c,
-		Cancel: cancel,
+		cancel: cancel,
+		wg:     wg,
 	}
 }
 
 func (w *worker) Run() {
+	defer w.wg.Done()
+
 	for {
 		select {
 		case job := <-w.jobChan:
@@ -154,8 +183,4 @@ func (w *worker) run(j Job) {
 	}()
 
 	err = j.Run()
-}
-
-func (w *worker) Submit(j Job) {
-	w.jobChan <- j
 }

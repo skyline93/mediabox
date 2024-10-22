@@ -21,21 +21,21 @@ type ImportJob struct {
 	photo *entity.Photo
 }
 
-func (i *ImportJob) Run() {
+func (i *ImportJob) Run() error {
 	uPath := filepath.Join(i.conf.StoragePath, "uploads", i.user.UUID, i.album.UUID, i.photo.FileName)
 	uploadPath := filepath.Join(i.conf.StoragePath, "uploads", i.user.UUID, i.album.UUID, i.photo.Name)
 
 	logger.Debugf("rename %s to %s", uPath, uploadPath)
 	if err := os.Rename(uPath, uploadPath); err != nil {
 		logger.Debugf("rename failed, err: %s", err)
-		return
+		return err
 	}
 
 	originalsPath := filepath.Join(i.conf.StoragePath, "originals", i.user.UUID, i.album.UUID)
 	if _, err := os.Stat(originalsPath); os.IsNotExist(err) {
 		err := os.MkdirAll(originalsPath, os.ModePerm)
 		if err != nil {
-			return
+			return err
 		}
 	}
 
@@ -45,27 +45,29 @@ func (i *ImportJob) Run() {
 	if _, err := os.Stat(thumbnailsPath); os.IsNotExist(err) {
 		err := os.MkdirAll(thumbnailsPath, os.ModePerm)
 		if err != nil {
-			return
+			return err
 		}
 	}
 
 	thumbnailPath := filepath.Join(thumbnailsPath, fmt.Sprintf("%s.jpg", i.photo.FileName))
 	if err := image.CreateThumbnail(uploadPath, thumbnailPath, fs.IsRAWData(i.photo.Ext)); err != nil {
 		logger.Debugf("create thumbnail failed, err: %s", err)
-		return
+		return err
 	}
 
 	logger.Debugf("rename %s to %s", uploadPath, destPath)
 	if err := os.Rename(uploadPath, destPath); err != nil {
 		logger.Debugf("rename failed, err: %s", err)
-		return
+		return err
 	}
 
 	logger.Debugf("set photo %d to imported", i.photo.ID)
 	if err := i.photo.SetIsImported(true); err != nil {
 		logger.Debugf("set is imported failed, err : %s", err)
-		return
+		return err
 	}
+
+	return nil
 }
 
 func ImportOriginalsNew(userName string, conf *config.Config) {
